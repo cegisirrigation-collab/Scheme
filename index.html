@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Reservoir Data 2024 — Sri Lanka · Unified Console</title>
+<title>Scheme Data — Sri Lanka · Department of Irrigation</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -48,6 +48,16 @@
     font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
   }
   #header .divider { width: 1px; height: 24px; background: var(--border2); flex-shrink: 0; }
+  /* Basemap buttons in header */
+  #header-bm { display: flex; align-items: center; gap: 4px; }
+  .hbm-btn {
+    padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border2);
+    background: transparent; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.04em;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .hbm-btn:hover { color: var(--text); border-color: var(--border2); background: rgba(255,255,255,0.06); }
+  .hbm-btn.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   #status-bar {
     margin-left: auto;
     font-family: 'DM Mono', monospace;
@@ -65,15 +75,15 @@
   /* ── MAP ── */
   #map {
     position: fixed;
-    top: 52px; left: 280px; right: 0; bottom: 0;
+    top: 52px; left: 0; right: 220px; bottom: 0;
   }
 
   /* ── SIDEBAR ── */
   #sidebar {
     position: fixed;
-    top: 52px; left: 0; bottom: 0; width: 280px;
+    top: 52px; right: 0; bottom: 0; width: 220px;
     background: var(--surface);
-    border-right: 1px solid var(--border);
+    border-left: 1px solid var(--border);
     display: flex; flex-direction: column;
     overflow: hidden;
   }
@@ -89,7 +99,7 @@
   }
 
   /* ── FILTER SECTION ── */
-  #filter-section { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+  #filter-section { padding: 14px 16px 12px; border-top: 1px solid var(--border); }
   #filter-section .sidebar-section-title { margin-bottom: 8px; }
 
   .filter-row { display: flex; flex-direction: column; gap: 6px; }
@@ -179,14 +189,8 @@
   .stat-val { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: var(--text); line-height: 1; }
   .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.06em; }
 
-  /* Basemap selector */
-  .bm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .bm-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; cursor: pointer; font-size: 11px; color: var(--muted); font-family: 'IBM Plex Sans', sans-serif; transition: all 0.15s; text-align: center; }
-  .bm-btn:hover { color: var(--text); border-color: var(--border2); }
-  .bm-btn.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-
   /* Popup Control */
-  #popup { position: fixed; bottom: 24px; right: 16px; z-index: 2000; width: 290px; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 14px 16px; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.5); max-height: 340px; overflow-y: auto; }
+  #popup { position: fixed; bottom: 24px; left: 16px; z-index: 2000; width: 290px; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 14px 16px; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.5); max-height: 340px; overflow-y: auto; }
   #popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
   #popup-title { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--text); line-height: 1.3; }
   #popup-type { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
@@ -198,7 +202,7 @@
   #popup-tour-badge { display: none; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.08em; color: var(--tour); background: color-mix(in srgb, var(--tour) 12%, transparent); border: 1px solid color-mix(in srgb, var(--tour) 35%, transparent); border-radius: 4px; padding: 2px 7px; margin-bottom: 8px; }
 
   /* ── RESERVOIR NAME OVERLAY ── */
-  #reservoir-name-overlay { position: fixed; top: 50%; left: calc(280px + (100vw - 280px) / 2); transform: translate(-50%, -50%); z-index: 2050; pointer-events: none; text-align: center; display: none; }
+  #reservoir-name-overlay { position: fixed; top: 50%; left: calc((100vw - 220px) / 2); transform: translate(-50%, -50%); z-index: 2050; pointer-events: none; text-align: center; display: none; }
   #reservoir-name-overlay.visible { display: block; }
   #res-name-main { font-family: 'Playfair Display', serif; font-size: clamp(28px, 4vw, 56px); font-weight: 600; color: #ffffff; text-shadow: 0 0 40px rgba(99,153,34,0.95), 0 0 90px rgba(99,153,34,0.5), 0 2px 14px rgba(0,0,0,0.9); letter-spacing: 0.02em; line-height: 1.1; animation: resNameIn 0.55s cubic-bezier(0.22,1,0.36,1) both; white-space: nowrap; }
   #res-name-sub { font-family: 'DM Mono', monospace; font-size: 13px; color: #a3e635; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 8px; text-shadow: 0 0 20px rgba(99,153,34,0.7), 0 1px 6px rgba(0,0,0,0.85); animation: resNameIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.1s both; }
@@ -226,7 +230,7 @@
 
   /* Tour banner setup */
   #tour-div-banner {
-    position: fixed; top: 64px; left: calc(280px + (100vw - 280px)/2); transform: translateX(-50%);
+    position: fixed; top: 64px; left: calc((100vw - 220px) / 2); transform: translateX(-50%);
     z-index: 2100; background: var(--surface); border: 1px solid var(--tour);
     border-radius: 6px; padding: 6px 16px; font-family: 'DM Mono', monospace;
     font-size: 11px; color: var(--tour); letter-spacing: 0.08em; white-space: nowrap;
@@ -242,21 +246,81 @@
   .progress-bar { width: 200px; height: 2px; background: var(--border2); border-radius: 1px; overflow: hidden; }
   .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s ease; border-radius: 1px; }
 
+  /* Popup animated rows for auto-tour */
+  @keyframes popupRowIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  #popup.tour-animated .popup-row {
+    opacity: 0;
+    animation: popupRowIn 0.35s ease forwards;
+  }
+  @keyframes popupSlideIn {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  #popup.tour-animated {
+    animation: popupSlideIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  @keyframes tourBadgePulse {
+    0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(240,192,64,0.4); }
+    50%      { opacity: 0.8; box-shadow: 0 0 0 6px rgba(240,192,64,0); }
+  }
+  #popup.tour-animated #popup-tour-badge {
+    animation: tourBadgePulse 1.6s ease-in-out infinite;
+  }
+
   .leaflet-container { background: #11141a !important; }
+
+  /* ── MINI OVERVIEW MAP ── */
+  #mini-map-wrap {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 10px 8px;
+    background: var(--surface);
+  }
+  #mini-map-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 5px;
+  }
+  #mini-map {
+    width: 100%; height: 240px;
+    border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border2);
+  }
+  #mini-map .leaflet-control-zoom,
+  #mini-map .leaflet-control-attribution { display: none !important; }
+  @keyframes miniPing {
+    0%   { transform: scale(1);   opacity: 0.9; }
+    70%  { transform: scale(2.4); opacity: 0; }
+    100% { transform: scale(2.4); opacity: 0; }
+  }
+  .mini-dot-wrap { position: relative; width: 12px; height: 12px; }
+  .mini-dot-ring { position: absolute; inset: 0; border-radius: 50%; background: rgba(240,60,60,0.5); animation: miniPing 1.8s ease-out infinite; }
+  .mini-dot-core { position: absolute; top: 3px; left: 3px; width: 6px; height: 6px; border-radius: 50%; background: #f03c3c; border: 1.5px solid #fff; box-shadow: 0 0 5px rgba(240,60,60,0.9); }
+
 </style>
 </head>
 <body>
 
 <div id="loading">
-  <h2>Reservoir Data 2024</h2>
+  <h2>Scheme Data</h2>
   <p id="load-msg">Connecting to ArcGIS FeatureServer…</p>
   <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
 </div>
 
 <div id="header">
   <div>
-    <h1>Reservoir Data 2024</h1>
+    <h1>Scheme Data</h1>
     <div class="subtitle">Sri Lanka · Department of Irrigation</div>
+  </div>
+  <div class="divider"></div>
+  <div id="header-bm">
+    <button class="hbm-btn active" onclick="setBasemap('dark',this)">Dark</button>
+    <button class="hbm-btn" onclick="setBasemap('satellite',this)">Satellite</button>
+    <button class="hbm-btn" onclick="setBasemap('topo',this)">Topo</button>
+    <button class="hbm-btn" onclick="setBasemap('osm',this)">Vector</button>
   </div>
   <div class="divider"></div>
   <div id="status-bar">
@@ -266,14 +330,10 @@
 </div>
 
 <div id="sidebar">
-  <div id="filter-section">
-    <div class="sidebar-section-title">🗂 Filter by Division</div>
-    <div class="filter-row">
-      <select id="div-filter" disabled>
-        <option value="">— All Divisions —</option>
-      </select>
-      <div class="filter-meta" id="filter-meta"></div>
-    </div>
+
+  <div id="mini-map-wrap">
+    <div id="mini-map-label">📍 Location Overview</div>
+    <div id="mini-map"></div>
   </div>
 
   <div id="tour-section">
@@ -303,25 +363,16 @@
     <div id="layer-list"></div>
   </div>
 
-  <div class="sidebar-section">
-    <div class="sidebar-section-title">Basemap</div>
-    <div class="bm-grid">
-      <button class="bm-btn active" onclick="setBasemap('dark',this)">Dark Mode</button>
-      <button class="bm-btn" onclick="setBasemap('satellite',this)">Satellite</button>
-      <button class="bm-btn" onclick="setBasemap('topo',this)">Topo Map</button>
-      <button class="bm-btn" onclick="setBasemap('osm',this)">Standard Vector</button>
+  <div id="filter-section" style="margin-top:auto;">
+    <div class="sidebar-section-title">🗂 Filter by Division</div>
+    <div class="filter-row">
+      <select id="div-filter" disabled>
+        <option value="">— All Divisions —</option>
+      </select>
+      <div class="filter-meta" id="filter-meta"></div>
     </div>
   </div>
 
-  <div id="stats-panel">
-    <div class="sidebar-section-title" style="margin-bottom:8px;">Summary Metrics</div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="stat-val" id="s-tanks">—</div><div class="stat-lbl">Tanks</div></div>
-      <div class="stat-card"><div class="stat-val" id="s-res">—</div><div class="stat-lbl">Reservoirs</div></div>
-      <div class="stat-card"><div class="stat-val" id="s-sluice">—</div><div class="stat-lbl">Sluices</div></div>
-      <div class="stat-card"><div class="stat-val" id="s-anicut">—</div><div class="stat-lbl">Anicuts</div></div>
-    </div>
-  </div>
 </div>
 
 <div id="reservoir-name-overlay">
@@ -377,7 +428,7 @@ const map = L.map('map', { zoomControl: true, attributionControl: true }).setVie
 let baseLayer = L.tileLayer(BASEMAPS.dark, { attribution: '© OpenStreetMap | © CARTO' }).addTo(map);
 
 function setBasemap(key, btn) {
-  document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.hbm-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   map.removeLayer(baseLayer);
   baseLayer = L.tileLayer(BASEMAPS[key], { attribution: '© Irrigation Mapping Framework' }).addTo(map);
@@ -397,13 +448,35 @@ function showPopup(props, layerLabel, isTour = false) {
   document.getElementById('popup-title').textContent = title;
   document.getElementById('popup-type').textContent = layerLabel;
   document.getElementById('popup-tour-badge').style.display = isTour ? 'block' : 'none';
-  const skip = new Set(['OBJECTID','Shape__Area','Shape__Length','GlobalID','FID','objectid','shape_area','shape_length']);
-  const rows = Object.entries(props)
-    .filter(([k,v]) => !skip.has(k) && v !== null && v !== '' && v !== undefined)
-    .slice(0,16)
-    .map(([k,v]) => `<div class="popup-row"><span class="popup-key">${k}</span><span class="popup-val">${v}</span></div>`)
-    .join('');
-  document.getElementById('popup-body').innerHTML = rows || '<div style="font-size:11px;color:var(--muted);padding:4px 0;">No fields trackable.</div>';
+
+  // Only show these specific fields (case-insensitive key matching)
+  const SHOW_FIELDS = [
+    { label: 'Type',      keys: ['Type','TYPE','type','FeatureType','feature_type'] },
+    { label: 'Range',     keys: ['Range','RANGE','range','RangeNo','Range_No','range_no'] },
+    { label: 'Irrig Area (ha)', keys: ['Irrig_Area_SchemeRegister_ha','Irrig_area_SchemeRegister_ha','irrig_area_schemeregister_ha','IrrigArea_ha','Irrig_Area_ha'] },
+  ];
+
+  const rows = [];
+
+  // Division — scan all property keys for anything containing "division", case-insensitive
+  const divKey = Object.keys(props).find(k => k.toLowerCase().includes('division') && props[k] !== null && props[k] !== undefined && props[k] !== '');
+  const divVal = divKey ? String(props[divKey]).trim() : (getDivName(props) || getDivCode(props));
+  if (divVal) rows.push(`<div class="popup-row" style="animation-delay:0.06s"><span class="popup-key">Division</span><span class="popup-val">${divVal}</span></div>`);
+
+  SHOW_FIELDS.forEach(({ label, keys }, i) => {
+    const val = keys.map(k => props[k]).find(v => v !== null && v !== undefined && v !== '');
+    if (val === undefined) return;
+    rows.push(`<div class="popup-row" style="animation-delay:${0.13 + i * 0.07}s"><span class="popup-key">${label}</span><span class="popup-val">${val}</span></div>`);
+  });
+
+  const rowsHTML = rows.join('');
+
+  document.getElementById('popup-body').innerHTML = rowsHTML || '<div style="font-size:11px;color:var(--muted);padding:4px 0;">No data available.</div>';
+
+  el.classList.remove('tour-animated');
+  void el.offsetWidth;
+  if (isTour) el.classList.add('tour-animated');
+
   el.style.display = 'block';
 }
 
@@ -703,6 +776,54 @@ async function init() {
 }
 
 init();
+
+/* ── MINI OVERVIEW MAP ── */
+(function() {
+  // Sri Lanka tight bounds
+  const SL_BOUNDS = L.latLngBounds([[5.85, 79.50], [9.95, 82.0]]);
+
+  const miniMap = L.map('mini-map', {
+    zoomControl: false,
+    attributionControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    touchZoom: false,
+    maxBounds: SL_BOUNDS,
+    maxBoundsViscosity: 1.0,
+  });
+
+  // Fit tightly to Sri Lanka — the basemap tiles show the country clearly at this zoom
+  miniMap.fitBounds(SL_BOUNDS, { padding: [2, 2] });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 10, minZoom: 6
+  }).addTo(miniMap);
+
+  // Pulsing red location marker
+  const dotIcon = L.divIcon({
+    className: '',
+    html: '<div class="mini-dot-wrap"><div class="mini-dot-ring"></div><div class="mini-dot-core"></div></div>',
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  });
+
+  const locMarker = L.marker([8.0, 80.7], { icon: dotIcon, interactive: false }).addTo(miniMap);
+
+  // Sync location dot with main map centre, clamped within SL bounds
+  function syncMiniMap() {
+    const c = map.getCenter();
+    const lat = Math.max(5.85, Math.min(9.95, c.lat));
+    const lng = Math.max(79.5, Math.min(82.0, c.lng));
+    locMarker.setLatLng([lat, lng]);
+  }
+
+  map.on('move', syncMiniMap);
+  map.on('moveend', syncMiniMap);
+  syncMiniMap();
+})();
 </script>
 </body>
 </html>
