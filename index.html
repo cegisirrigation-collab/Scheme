@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="night">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -11,7 +11,8 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
+  /* ── NIGHT MODE (default / dark) ── */
+  :root, [data-theme="night"] {
     --bg:       #0d1117;
     --surface:  #161b22;
     --surface2: #1c2330;
@@ -26,7 +27,34 @@
     --purple:   #7f77dd;
     --pink:     #c4527e;
     --tour:     #f0c040;
+    --map-bg:   #11141a;
   }
+
+  /* ── DAY MODE (OSM / light) ── */
+  [data-theme="day"] {
+    --bg:       #f0f4f8;
+    --surface:  #ffffff;
+    --surface2: #e8edf3;
+    --border:   rgba(0,0,0,0.10);
+    --border2:  rgba(0,0,0,0.18);
+    --text:     #1a202c;
+    --muted:    #5a6a7a;
+    --accent:   #1a7a55;
+    --accent2:  #1a6abf;
+    --amber:    #b56a10;
+    --coral:    #b84020;
+    --purple:   #5a52cc;
+    --pink:     #a03060;
+    --tour:     #c08000;
+    --map-bg:   #e8ecf0;
+  }
+
+  /* Day-mode specific overrides */
+  [data-theme="day"] #header { box-shadow: 0 1px 6px rgba(0,0,0,0.12); }
+  [data-theme="day"] .hbm-btn { color: var(--muted); }
+  [data-theme="day"] .leaflet-container { background: var(--map-bg) !important; }
+  [data-theme="day"] #popup { box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+  [data-theme="day"] select#div-filter { color: var(--text); }
 
   html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; overflow: hidden; }
 
@@ -72,7 +100,38 @@
   .status-dot.touring { background: var(--tour); animation: pulse 1.4s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  /* ── MAP ── */
+  /* ── DAY / NIGHT MODE BADGE ── */
+  #mode-badge {
+    display: flex; align-items: center; gap: 7px;
+    padding: 4px 12px; border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 0.06em;
+    color: var(--text); white-space: nowrap;
+    transition: all 0.4s ease;
+    cursor: pointer; user-select: none;
+  }
+  #mode-badge:hover { border-color: var(--accent); }
+  #mode-badge .mode-icon { font-size: 13px; line-height: 1; }
+  #mode-badge .mode-label { font-weight: 500; }
+  #mode-badge .mode-timer {
+    color: var(--muted); font-size: 9px; margin-left: 2px;
+  }
+  [data-theme="day"] #mode-badge {
+    background: #e8f4ff; border-color: #90c0e8; color: #1a4a7a;
+  }
+  [data-theme="night"] #mode-badge {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+    border-color: var(--accent);
+  }
+  /* Transition flash on mode switch */
+  #mode-transition-flash {
+    position: fixed; inset: 0; z-index: 9990; pointer-events: none;
+    opacity: 0; background: white;
+    transition: opacity 0.25s ease;
+  }
+  #mode-transition-flash.flashing { opacity: 0.18; }
   #map {
     position: fixed;
     top: 52px; left: 0; right: 220px; bottom: 0;
@@ -270,7 +329,7 @@
     animation: tourBadgePulse 1.6s ease-in-out infinite;
   }
 
-  .leaflet-container { background: #11141a !important; }
+  .leaflet-container { background: var(--map-bg, #11141a) !important; }
 
   /* ── MINI OVERVIEW MAP ── */
   #mini-map-wrap {
@@ -304,6 +363,8 @@
 </head>
 <body>
 
+<div id="mode-transition-flash"></div>
+
 <div id="loading">
   <h2>Scheme Data</h2>
   <p id="load-msg">Connecting to ArcGIS FeatureServer…</p>
@@ -322,6 +383,12 @@
     <button class="hbm-btn" onclick="setBasemap('topo',this)">Topo</button>
     <button class="hbm-btn" onclick="setBasemap('osm',this)">Vector</button>
   </div>
+  <div class="divider"></div>
+  <button id="mode-badge" title="Click to manually toggle Day/Night mode">
+    <span class="mode-icon" id="mode-icon">🌙</span>
+    <span class="mode-label" id="mode-label">NIGHT</span>
+    <span class="mode-timer" id="mode-timer"></span>
+  </button>
   <div class="divider"></div>
   <div id="status-bar">
     <div class="status-dot" id="status-dot"></div>
@@ -777,7 +844,155 @@ async function init() {
 
 init();
 
-/* ── MINI OVERVIEW MAP ── */
+/* ══════════════════════════════════════════════════════
+   AUTO DAY / NIGHT MODE ENGINE
+   Day  = 06:00 → 18:00 local time  →  OSM basemap, light theme
+   Night= 18:00 → 06:00 local time  →  CartoDB Dark, dark theme
+   Checks every 60 s; badge shows countdown to next switch.
+   Manual override: click the badge in the header.
+══════════════════════════════════════════════════════ */
+(function() {
+  const DAY_START  = 6;   // 06:00
+  const DAY_END    = 18;  // 18:00
+
+  // Basemap URLs (same object as main BASEMAPS const)
+  const BM_NIGHT = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  const BM_DAY   = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const BM_MINI_NIGHT = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  const BM_MINI_DAY   = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+  let currentMode  = null;   // 'day' | 'night'
+  let manualMode   = null;   // if user clicked badge, locks to this
+  let miniBaseLayer = null;
+
+  // Grab the mini-map instance (created after init runs)
+  function getMiniMap() {
+    // We walk the Leaflet map registry to find the mini-map div's map
+    return window._miniMapInstance || null;
+  }
+
+  function isDay() {
+    const h = new Date().getHours();
+    return h >= DAY_START && h < DAY_END;
+  }
+
+  function minutesUntilSwitch() {
+    const now = new Date();
+    const h = now.getHours(), m = now.getMinutes();
+    const totalMin = h * 60 + m;
+    const dayStartMin  = DAY_START * 60;
+    const dayEndMin    = DAY_END   * 60;
+    if (totalMin >= dayStartMin && totalMin < dayEndMin) {
+      return dayEndMin - totalMin;
+    } else if (totalMin >= dayEndMin) {
+      return 24 * 60 - totalMin + dayStartMin;
+    } else {
+      return dayStartMin - totalMin;
+    }
+  }
+
+  function applyMode(mode, force) {
+    if (!force && mode === currentMode) return;
+    currentMode = mode;
+
+    const root  = document.documentElement;
+    const flash = document.getElementById('mode-transition-flash');
+    const icon  = document.getElementById('mode-icon');
+    const lbl   = document.getElementById('mode-label');
+    const badge = document.getElementById('mode-badge');
+
+    // Flash transition
+    if (flash) {
+      flash.classList.add('flashing');
+      setTimeout(() => flash.classList.remove('flashing'), 350);
+    }
+
+    if (mode === 'day') {
+      root.setAttribute('data-theme', 'day');
+      if (icon)  icon.textContent  = '☀️';
+      if (lbl)   lbl.textContent   = 'DAY';
+      if (badge) badge.title = 'DAY mode (OSM map) — click to force NIGHT';
+
+      // Switch main map to OSM
+      map.removeLayer(baseLayer);
+      baseLayer = L.tileLayer(BM_DAY, { attribution: '© OpenStreetMap contributors' });
+      baseLayer.addTo(map);
+      baseLayer.bringToBack();
+
+      // Update basemap button UI
+      document.querySelectorAll('.hbm-btn').forEach(b => b.classList.remove('active'));
+      const osmBtn = [...document.querySelectorAll('.hbm-btn')].find(b => b.textContent.trim() === 'Vector');
+      if (osmBtn) osmBtn.classList.add('active');
+
+      // Sync mini-map
+      if (window._miniMapInstance && window._miniBaseLayer) {
+        window._miniMapInstance.removeLayer(window._miniBaseLayer);
+        window._miniBaseLayer = L.tileLayer(BM_MINI_DAY, { maxZoom: 10, minZoom: 6 });
+        window._miniBaseLayer.addTo(window._miniMapInstance);
+      }
+    } else {
+      root.setAttribute('data-theme', 'night');
+      if (icon)  icon.textContent  = '🌙';
+      if (lbl)   lbl.textContent   = 'NIGHT';
+      if (badge) badge.title = 'NIGHT mode (Dark map) — click to force DAY';
+
+      // Switch main map to CartoDB Dark
+      map.removeLayer(baseLayer);
+      baseLayer = L.tileLayer(BM_NIGHT, { attribution: '© OpenStreetMap | © CARTO', subdomains: 'abcd' });
+      baseLayer.addTo(map);
+      baseLayer.bringToBack();
+
+      // Update basemap button UI
+      document.querySelectorAll('.hbm-btn').forEach(b => b.classList.remove('active'));
+      const darkBtn = [...document.querySelectorAll('.hbm-btn')].find(b => b.textContent.trim() === 'Dark');
+      if (darkBtn) darkBtn.classList.add('active');
+
+      // Sync mini-map
+      if (window._miniMapInstance && window._miniBaseLayer) {
+        window._miniMapInstance.removeLayer(window._miniBaseLayer);
+        window._miniBaseLayer = L.tileLayer(BM_MINI_NIGHT, { subdomains: 'abcd', maxZoom: 10, minZoom: 6 });
+        window._miniBaseLayer.addTo(window._miniMapInstance);
+      }
+    }
+  }
+
+  function updateBadgeTimer() {
+    const timerEl = document.getElementById('mode-timer');
+    if (!timerEl) return;
+    if (manualMode) {
+      timerEl.textContent = '(manual)';
+      return;
+    }
+    const mins = minutesUntilSwitch();
+    const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+    const mm = String(mins % 60).padStart(2, '0');
+    timerEl.textContent = `→ ${hh}:${mm}`;
+  }
+
+  function tick() {
+    const target = manualMode || (isDay() ? 'day' : 'night');
+    applyMode(target, false);
+    updateBadgeTimer();
+  }
+
+  // Manual toggle on badge click
+  const badge = document.getElementById('mode-badge');
+  if (badge) {
+    badge.addEventListener('click', () => {
+      manualMode = currentMode === 'day' ? 'night' : 'day';
+      applyMode(manualMode, true);
+      updateBadgeTimer();
+      // Auto-clear manual override after 2 hours
+      setTimeout(() => { manualMode = null; tick(); }, 2 * 60 * 60 * 1000);
+    });
+  }
+
+  // Kick off immediately, then every 60 s
+  tick();
+  setInterval(tick, 60000);
+  // Update countdown every 30 s
+  setInterval(updateBadgeTimer, 30000);
+})();
 (function() {
   // Sri Lanka tight bounds
   const SL_BOUNDS = L.latLngBounds([[5.85, 79.50], [9.95, 82.0]]);
@@ -795,10 +1010,13 @@ init();
     maxBoundsViscosity: 1.0,
   });
 
+  // Expose for day/night mode engine
+  window._miniMapInstance = miniMap;
+
   // Fit tightly to Sri Lanka — the basemap tiles show the country clearly at this zoom
   miniMap.fitBounds(SL_BOUNDS, { padding: [2, 2] });
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  window._miniBaseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     subdomains: 'abcd', maxZoom: 10, minZoom: 6
   }).addTo(miniMap);
 
